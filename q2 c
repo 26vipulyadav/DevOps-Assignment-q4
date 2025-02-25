@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# File to store machine info
+OUTPUT_FILE="machine_info.txt"
+> "$OUTPUT_FILE"  # Clear existing file
+
+# List of remote machines (replace with actual machine addresses)
+MACHINES=("user@machine1" "user@machine2" "user@machine3")
+
+# Extract data from remote machines
+for machine in "${MACHINES[@]}"; do
+    echo "Collecting data from $machine..."
+    ssh "$machine" 'find /path/to/check -type f -exec file --mime-type {} + | awk -F: "{print \$2}" | sort | uniq -c' >> "$OUTPUT_FILE"
+done
+
+# Also collect data from the local machine
+echo "Collecting data from local machine..."
+find /home -type f -exec file --mime-type {} + | awk -F: '{print $2}' | sort | uniq -c >> "$OUTPUT_FILE"
+
+# Process data: Identify file types, names, and sizes
+echo -e "File Name\tFile Type\tSize (KB)" > file_summary.txt
+find /home -type f -exec ls -lh {} + | awk '{print $9, $5}' | awk '{print $1 "\t" $2}' >> file_summary.txt
+
+# Generate data for gnuplot
+echo "Generating data file for plotting..."
+awk '{print $2, $3}' file_summary.txt | sed 's/K//' | awk '{sum[$1]+=$2} END {for (i in sum) print i, sum[i]}' > file_data.txt
+
+# Create Gnuplot script
+GNUPLOT_SCRIPT="plot_script.gp"
+cat <<EOF > $GNUPLOT_SCRIPT
+set terminal png size 800,600
+set output 'file_size_plot.png'
+set title "Total File Size by Type"
+set xlabel "File Type"
+set ylabel "Total Size (KB)"
+set style fill solid
+set boxwidth 0.5
+set grid
+plot "file_data.txt" using 2:xtic(1) with boxes lc rgb "purple" title "Size in KB"
+EOF
+
+# Run Gnuplot
+gnuplot $GNUPLOT_SCRIPT
+
+echo "Plot saved as file_size_plot.png"

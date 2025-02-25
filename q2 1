@@ -1,0 +1,25 @@
+list_files_info() {
+    echo "-------------------------------------------------------------"
+    echo " Name                          | Type        | Size (KB) "
+    echo "-------------------------------------------------------------"
+
+    for item in *; do
+        if [ -f "$item" ]; then
+            type="File"
+        elif [ -d "$item" ]; then
+            type="Directory"
+        else
+            type="Other"
+        fi
+
+        # Get file size in KB
+        size=$(du -k "$item" | cut -f1)
+
+        # Print details
+        printf " %-30s | %-10s | %5s KB \n" "$item" "$type" "$size"
+    done
+
+    echo "-------------------------------------------------------------"
+}
+
+list_files_info
